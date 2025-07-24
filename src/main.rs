@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let aave_portfolio_tracker =
         Arc::new(AavePortfolioTracker::new(config.aave_portfolio_tracker)?);
 
-    let scheduler = JobScheduler::new().await.unwrap();
+    let scheduler = JobScheduler::new().await?;
     let job = Job::new_async(config.cron_schedule, move |_, _| {
         let worker = aave_portfolio_tracker.clone();
         Box::pin(async move {
