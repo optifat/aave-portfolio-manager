@@ -29,6 +29,8 @@ impl AavePortfolioFetcher {
     }
 
     pub async fn fetch_portfolio(&self) -> anyhow::Result<AavePortfolio> {
+        log::info!("Fetching supply balances");
+
         let mut supply = HashMap::new();
         let mut total_supply = 0.0;
         let mut collateral = 0.0;
@@ -47,6 +49,8 @@ impl AavePortfolioFetcher {
                 collateral += 0.78 * price * balance_f64;
             }
         }
+
+        log::info!("Fetching debt balances");
 
         let mut debt = HashMap::new();
         let mut total_debt = 0.0;

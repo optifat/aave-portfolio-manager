@@ -13,6 +13,8 @@ mod telegram_bot;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
+    log::info!("Starting the service");
     dotenv().ok();
 
     let health_factor_notification_limit = 1.2;
@@ -32,8 +34,8 @@ async fn main() -> anyhow::Result<()> {
     scheduler.add(job).await?;
     scheduler.start().await?;
 
-    // Wait while the jobs run
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
-    }
+    tokio::signal::ctrl_c().await?;
+    log::info!("Stopping the service");
+
+    Ok(())
 }

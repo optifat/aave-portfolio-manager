@@ -7,6 +7,7 @@ edition = "2024"
 anyhow = "1.0"
 async-trait = "0.1"
 dotenvy = "0.15"
+env_logger = "0.11.8"
 ethers = { version = "2.0", features = ["abigen", "ws"] }
 log = "0.4"
 reqwest = "0.12"
