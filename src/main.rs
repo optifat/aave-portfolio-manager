@@ -1,12 +1,12 @@
-use dotenvy::dotenv;
-use ethers::abi::Address;
 use std::env;
+use std::sync::Arc;
 
-use crate::data_fetchers::AavePortfolioFetcher;
-use crate::data_fetchers::defi_llama_data_fetcher::DefiLlamaDataFetcher;
-use crate::data_fetchers::eth_chain_data_fetcher::EthChainDataFetcher;
-use crate::telegram_bot::TelegramBot;
+use dotenvy::dotenv;
+use tokio_cron_scheduler::{Job, JobScheduler};
 
+use crate::aave_portfolio_tracker::AavePortfolioTracker;
+
+mod aave_portfolio_tracker;
 mod data_fetchers;
 mod portfolio_data;
 mod telegram_bot;
@@ -14,21 +14,26 @@ mod telegram_bot;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
-    let bot_token = env::var("BOT_TOKEN")?;
-    let tg_user_id: i64 = env::var("TG_USER_ID")?.parse()?;
-    let wallet_address: Address = env::var("ETH_ADDRESS")?.parse()?;
-    let node_uri: String = env::var("NODE_URI")?;
 
-    let tg_bot = TelegramBot::new(bot_token.as_str(), tg_user_id);
+    let health_factor_notification_limit = 1.2;
+    let aave_portfolio_tracker =
+        Arc::new(AavePortfolioTracker::new(health_factor_notification_limit)?);
 
-    let eth_chain_data_fetcher = EthChainDataFetcher::new(node_uri, wallet_address)?;
-    let defi_llama_price_fetcher = DefiLlamaDataFetcher::new();
+    let scheduler = JobScheduler::new().await.unwrap();
+    let cron_expr = env::var("CRON_EXPR").unwrap_or("0 */5 * * * *".into()); // 5 minutes
 
-    let portfolio_fetcher =
-        AavePortfolioFetcher::new(eth_chain_data_fetcher, Box::new(defi_llama_price_fetcher));
+    let job = Job::new_async(cron_expr, move |_, _| {
+        let worker = aave_portfolio_tracker.clone();
+        Box::pin(async move {
+            worker.run().await;
+        })
+    })?;
 
-    let portfolio = portfolio_fetcher.fetch_portfolio().await?;
-    tg_bot.send_portfolio_notification(&portfolio).await?;
+    scheduler.add(job).await?;
+    scheduler.start().await?;
 
-    Ok(())
+    // Wait while the jobs run
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+    }
 }
