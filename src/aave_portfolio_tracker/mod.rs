@@ -45,28 +45,22 @@ impl AavePortfolioTracker {
     }
 
     pub async fn run(&self) {
-        log::info!("Fetching the portfolio");
+        log::info!("Fetching the AAVE v3 portfolio");
 
         let portfolio = match self.aave_portfolio_fetcher.fetch_portfolio().await {
             Ok(p) => p,
-            Err(err) => {
-                log::error!("Failed to fetch portfolio: {}", err);
-                return;
-            }
+            Err(err) => return log::error!("Failed to fetch portfolio: {}", err),
         };
 
-        if portfolio.health_factor < self.config.health_factor_notification_limit {
-            match self
-                .telegram_bot
-                .send_portfolio_notification(&portfolio)
-                .await
-            {
-                Err(err) => {
-                    log::error!("Failed to notify: {}", err);
-                    return;
-                }
-                Ok(_) => {}
-            }
+        if portfolio.health_factor >= self.config.health_factor_notification_limit {
+            return log::info!(
+                "Health factor is within an acceptable range, skipping notification"
+            );
         }
+
+        self.telegram_bot
+            .send_portfolio_notification(&portfolio)
+            .await
+            .unwrap_or_else(|err| log::error!("Failed to notify: {}", err));
     }
 }
