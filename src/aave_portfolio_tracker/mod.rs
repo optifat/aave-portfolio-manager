@@ -6,15 +6,18 @@ use crate::data_fetchers::AavePortfolioFetcher;
 use crate::data_fetchers::defi_llama_data_fetcher::DefiLlamaDataFetcher;
 use crate::data_fetchers::eth_chain_data_fetcher::EthChainDataFetcher;
 use crate::telegram_bot::TelegramBot;
+use config::AavePortfolioTrackerConfig;
+
+pub mod config;
 
 pub struct AavePortfolioTracker {
     aave_portfolio_fetcher: AavePortfolioFetcher,
     telegram_bot: TelegramBot,
-    pub health_factor_notification_limit: f64,
+    pub config: AavePortfolioTrackerConfig,
 }
 
 impl AavePortfolioTracker {
-    pub fn new(health_factor_notification_limit: f64) -> anyhow::Result<Self> {
+    pub fn new(config: AavePortfolioTrackerConfig) -> anyhow::Result<Self> {
         log::info!("Parsing env vars");
         let bot_token = env::var("BOT_TOKEN")?;
         let tg_user_id: i64 = env::var("TG_USER_ID")?.parse()?;
@@ -37,7 +40,7 @@ impl AavePortfolioTracker {
         Ok(Self {
             aave_portfolio_fetcher,
             telegram_bot,
-            health_factor_notification_limit,
+            config,
         })
     }
 
@@ -52,7 +55,7 @@ impl AavePortfolioTracker {
             }
         };
 
-        if portfolio.health_factor < self.health_factor_notification_limit {
+        if portfolio.health_factor < self.config.health_factor_notification_limit {
             match self
                 .telegram_bot
                 .send_portfolio_notification(&portfolio)
