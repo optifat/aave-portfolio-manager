@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use ethers::types::Address;
 
 use super::price_fetcher::PriceFetcher;
