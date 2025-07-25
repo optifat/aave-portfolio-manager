@@ -22,7 +22,7 @@ impl TelegramBot {
         portfolio: &AavePortfolio,
     ) -> anyhow::Result<()> {
         log::info!("Notifying the user");
-        self.send_message(serde_yaml::to_string(portfolio)?).await
+        self.send_message(portfolio.to_telegram_message()).await
     }
 
     async fn send_message(&self, message: String) -> anyhow::Result<()> {

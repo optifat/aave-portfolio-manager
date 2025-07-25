@@ -68,18 +68,13 @@ impl AavePortfolioFetcher {
             }
         }
 
-        let net = Self::floor(total_supply - total_debt, 2);
-        let health_factor = Self::floor(collateral / total_debt, 2);
+        let net = total_supply - total_debt;
+        let health_factor = collateral / total_debt;
         Ok(AavePortfolio {
             supply,
             debt,
             net,
             health_factor,
         })
-    }
-
-    fn floor(value: f64, decimals: i32) -> f64 {
-        let factor = 10_f64.powi(decimals);
-        (value * factor).floor() / factor
     }
 }
