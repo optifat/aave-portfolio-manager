@@ -2,6 +2,11 @@
 name = "aave-portfolio-tracker"
 version = "0.1.0"
 edition = "2024"
+description = "Telegram bot and Rust service for monitoring AAVE v3 positions with health factor alerts."
+readme = "README.md"
+license = "GPL-3.0"
+repository = "https://github.com/optifat/aave-portfolio-manager"
+authors = ["Pavel Smelov <pavsmel@hotmail.com>"]
 
 [dependencies]
 anyhow = "1.0"
