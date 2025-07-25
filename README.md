@@ -59,16 +59,49 @@ Ensure the [token registry file](./src/portfolio_data/erc20_registry.rs) include
 
 ## Running the Service
 
+> Make sure your `.env` file is in the current working directory and contains all required variables (see [Environment Setup](#1-environment-setup)).
+
 ### Locally (via Cargo)
 
 ```bash
 cargo run --release
 ```
 
+This will launch the service with the default configuration found in `Config.toml` and the environment from `.env`.
+
 ### Docker
 
-Docker support is planned for a future release.
+You can run the Aave Portfolio Tracker as a Docker container.
 
+#### Build the Image
+
+```bash
+docker build -t aave-portfolio-tracker .
+```
+
+#### Run the Container
+
+```bash
+docker run -d --name aave-portfolio-tracker --env-file .env aave-portfolio-tracker
+```
+
+#### Start an Existing (Previously Stopped) Container
+
+```bash
+docker start aave-portfolio-tracker
+```
+
+#### Stop the Container
+
+```bash
+docker stop aave-portfolio-tracker
+```
+
+#### Remove the Container
+
+```bash
+docker rm aave-portfolio-tracker
+```
 ---
 
 ## Roadmap
