@@ -11,7 +11,7 @@ pub struct AppConfig {
 
 pub fn load_config() -> anyhow::Result<AppConfig> {
     let settings = config::Config::builder()
-        .add_source(config::File::with_name("config"))
+        .add_source(config::File::with_name("Config"))
         .build()?;
 
     Ok(settings.try_deserialize()?)
