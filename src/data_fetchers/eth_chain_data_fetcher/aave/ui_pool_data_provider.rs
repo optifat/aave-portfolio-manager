@@ -11,13 +11,15 @@ abigen!(
     ]"#,
 );
 
+type UserReserveDataOutput = Vec<(Address, U256, bool, U256)>;
+
 pub async fn get_user_reserves(
     provider: Arc<Provider<Http>>,
     user: Address,
 ) -> anyhow::Result<super::UserAaveTokens> {
     let pool_data_provider = IUiPoolDataProvider::new(aave_ui_pool_data_provider(), provider);
 
-    let (all_reserves, _): (Vec<(H160, U256, bool, U256)>, u8) = pool_data_provider
+    let (all_reserves, _): (UserReserveDataOutput, u8) = pool_data_provider
         .get_user_reserves_data(aave_pool_addresses_provider(), user)
         .await?;
 

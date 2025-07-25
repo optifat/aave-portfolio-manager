@@ -39,7 +39,14 @@ impl AavePortfolioFetcher {
 
         let mut supply = HashMap::new();
         for token in assets_data.collateral {
-            let balance = self.eth_chain_data_fetcher.fetch_balance(token).await?;
+            let reserve_data = self
+                .eth_chain_data_fetcher
+                .fetch_aave_reserve_data(token)
+                .await?;
+            let balance = self
+                .eth_chain_data_fetcher
+                .fetch_balance(reserve_data.a_token)
+                .await?;
 
             let symbol = self
                 .eth_chain_data_fetcher
@@ -52,7 +59,14 @@ impl AavePortfolioFetcher {
 
         let mut debt = HashMap::new();
         for token in assets_data.debt {
-            let balance = self.eth_chain_data_fetcher.fetch_balance(token).await?;
+            let reserve_data = self
+                .eth_chain_data_fetcher
+                .fetch_aave_reserve_data(token)
+                .await?;
+            let balance = self
+                .eth_chain_data_fetcher
+                .fetch_balance(reserve_data.variable_debt_token)
+                .await?;
 
             let symbol = self
                 .eth_chain_data_fetcher

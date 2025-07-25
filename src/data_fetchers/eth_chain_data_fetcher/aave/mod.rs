@@ -5,7 +5,7 @@ mod pool;
 mod pool_addresses_provider;
 mod ui_pool_data_provider;
 
-pub use pool::get_user_aave_data;
+pub use pool::{get_aave_reserve_data, get_user_aave_data};
 pub use ui_pool_data_provider::get_user_reserves;
 
 #[derive(Debug, Serialize)]
@@ -22,4 +22,10 @@ pub struct AaveUserData {
 pub struct UserAaveTokens {
     pub collateral: Vec<Address>,
     pub debt: Vec<Address>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AaveReserveData {
+    pub a_token: Address,
+    pub variable_debt_token: Address,
 }

@@ -6,7 +6,7 @@ use ethers::{
     providers::{Http, Provider},
 };
 
-use crate::data_fetchers::eth_chain_data_fetcher::aave::AaveUserData;
+use crate::data_fetchers::eth_chain_data_fetcher::aave::{AaveReserveData, AaveUserData};
 
 mod aave;
 mod erc20;
@@ -42,5 +42,9 @@ impl EthChainDataFetcher {
 
     pub async fn fetch_user_aave_reserves(&self) -> anyhow::Result<aave::UserAaveTokens> {
         aave::get_user_reserves(self.provider.clone(), self.wallet).await
+    }
+
+    pub async fn fetch_aave_reserve_data(&self, token: Address) -> anyhow::Result<AaveReserveData> {
+        aave::get_aave_reserve_data(self.provider.clone(), token).await
     }
 }
