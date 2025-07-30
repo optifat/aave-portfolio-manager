@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use eth_chain_data_fetcher::EthChainDataFetcher;
+use ethers::types::U256;
 use price_fetcher::PriceFetcher;
 
-use crate::portfolio_data::{
-    erc20_registry::{a_token_set, variable_debt_token_set},
-    portfolio::AavePortfolio,
-};
+use crate::common_data::{AAVE_ORACLE_BASE_UNIT, AAVE_WAD};
+use crate::portfolio::AavePortfolio;
 
 pub mod defi_llama_data_fetcher;
 pub mod eth_chain_data_fetcher;
@@ -14,6 +13,7 @@ pub mod price_fetcher;
 
 pub struct AavePortfolioFetcher {
     eth_chain_data_fetcher: EthChainDataFetcher,
+    #[allow(dead_code)]
     price_fetcher: Box<dyn PriceFetcher>,
 }
 
@@ -29,52 +29,72 @@ impl AavePortfolioFetcher {
     }
 
     pub async fn fetch_portfolio(&self) -> anyhow::Result<AavePortfolio> {
+        log::info!("Fetching user aave assets");
+        let assets_data = self
+            .eth_chain_data_fetcher
+            .fetch_user_aave_reserves()
+            .await?;
+
         log::info!("Fetching supply balances");
 
         let mut supply = HashMap::new();
-        let mut total_supply = 0.0;
-        let mut collateral = 0.0;
-        for token in a_token_set() {
+        for token in assets_data.collateral {
+            let reserve_data = self
+                .eth_chain_data_fetcher
+                .fetch_aave_reserve_data(token)
+                .await?;
             let balance = self
                 .eth_chain_data_fetcher
-                .fetch_balance(token.address)
+                .fetch_balance(reserve_data.a_token)
                 .await?;
-            if balance != 0 {
-                supply.insert(token.symbol.to_string(), balance);
 
-                let price = self.price_fetcher.fetch_price_in_usd(token.address).await?;
-                let balance_f64 = balance as f64 / f64::powi(10.0, token.decimals as i32);
-                total_supply += price * balance_f64;
-                // TODO: replace const 0.78 with value obtained from somewhere
-                collateral += 0.78 * price * balance_f64;
-            }
+            let symbol = self
+                .eth_chain_data_fetcher
+                .fetch_token_symbol(token)
+                .await?;
+            supply.insert(symbol, balance);
         }
 
         log::info!("Fetching debt balances");
 
         let mut debt = HashMap::new();
-        let mut total_debt = 0.0;
-        for token in variable_debt_token_set() {
+        for token in assets_data.debt {
+            let reserve_data = self
+                .eth_chain_data_fetcher
+                .fetch_aave_reserve_data(token)
+                .await?;
             let balance = self
                 .eth_chain_data_fetcher
-                .fetch_balance(token.address)
+                .fetch_balance(reserve_data.variable_debt_token)
                 .await?;
-            if balance != 0 {
-                debt.insert(token.symbol.to_string(), balance);
 
-                let price = self.price_fetcher.fetch_price_in_usd(token.address).await?;
-                let balance_f64 = balance as f64 / f64::powi(10.0, token.decimals as i32);
-                total_debt += price * balance_f64;
-            }
+            let symbol = self
+                .eth_chain_data_fetcher
+                .fetch_token_symbol(token)
+                .await?;
+            debt.insert(symbol, balance);
         }
 
-        let net = total_supply - total_debt;
-        let health_factor = collateral / total_debt;
+        log::info!("Fetching combined data");
+        let combined_data = self.eth_chain_data_fetcher.fetch_user_aave_data().await?;
+
+        let net =
+            Self::u256_cast(combined_data.total_collateral_base - combined_data.total_debt_base)?
+                / AAVE_ORACLE_BASE_UNIT as f64;
+        let health_factor = Self::u256_cast(combined_data.health_factor)? / AAVE_WAD as f64;
         Ok(AavePortfolio {
             supply,
             debt,
             net,
             health_factor,
         })
+    }
+
+    fn u256_cast(input: U256) -> anyhow::Result<f64> {
+        if input > U256::from(u128::MAX) {
+            anyhow::bail!("Failed to convert {} U256 to u128", input);
+        }
+
+        Ok(input.as_u128() as f64)
     }
 }

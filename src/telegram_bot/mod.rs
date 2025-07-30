@@ -2,7 +2,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::portfolio_data::portfolio::AavePortfolio;
+use crate::portfolio::AavePortfolio;
 
 pub struct TelegramBot {
     bot: Arc<Mutex<Bot>>,

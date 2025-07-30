@@ -7,9 +7,10 @@ use crate::{aave_portfolio_tracker::AavePortfolioTracker, logger::init_logger};
 
 mod aave_portfolio_tracker;
 mod app_config;
+mod common_data;
 mod data_fetchers;
 mod logger;
-mod portfolio_data;
+mod portfolio;
 mod telegram_bot;
 
 #[tokio::main]
