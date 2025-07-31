@@ -1,19 +1,37 @@
 use std::sync::Arc;
-use teloxide::prelude::*;
-use tokio::sync::Mutex;
 
-use crate::portfolio::AavePortfolio;
+use teloxide::{prelude::*, utils::command::BotCommands};
+use tokio::sync::mpsc;
+
+use crate::{
+    commands::{BotCommand, TrackerCommand},
+    portfolio::AavePortfolio,
+};
+use command::TelegramBotExternalCommand;
+
+pub mod command;
 
 pub struct TelegramBot {
-    bot: Arc<Mutex<Bot>>,
+    bot: Arc<Bot>,
     chat_id: ChatId,
+    to_tracker_sender: mpsc::Sender<TrackerCommand>,
+    from_tracker_receiver: mpsc::Receiver<BotCommand>,
 }
 
 impl TelegramBot {
-    pub fn new(bot_token: &str, user_id: i64) -> Self {
+    pub async fn new(
+        bot_token: &str,
+        user_id: i64,
+        to_tracker_sender: mpsc::Sender<TrackerCommand>,
+        from_tracker_receiver: mpsc::Receiver<BotCommand>,
+    ) -> Self {
+        log::info!("Starting TelegramBot");
+
         Self {
-            bot: Arc::new(Mutex::new(Bot::new(bot_token))),
+            bot: Arc::new(Bot::new(bot_token)),
             chat_id: ChatId(user_id),
+            to_tracker_sender,
+            from_tracker_receiver,
         }
     }
 
@@ -26,8 +44,45 @@ impl TelegramBot {
     }
 
     async fn send_message(&self, message: String) -> anyhow::Result<()> {
-        let bot = self.bot.lock().await;
-        bot.send_message(self.chat_id, message).send().await?;
+        self.bot.send_message(self.chat_id, message).send().await?;
         Ok(())
+    }
+
+    pub async fn answer(
+        &self,
+        msg: Message,
+        cmd: TelegramBotExternalCommand,
+    ) -> ResponseResult<()> {
+        let bot = &self.bot;
+
+        if msg.chat.id == self.chat_id {
+            bot.send_message(msg.chat.id, Self::access_answer(cmd).await)
+                .await?;
+        } else {
+            bot.send_message(msg.chat.id, Self::no_access_answer(cmd).await)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn access_answer(cmd: TelegramBotExternalCommand) -> String {
+        match cmd {
+            TelegramBotExternalCommand::Help => {
+                TelegramBotExternalCommand::descriptions().to_string()
+            },
+            _ => "In development".into(),
+        }
+    }
+
+    async fn no_access_answer(cmd: TelegramBotExternalCommand) -> String {
+        let more_info = " More info: https://github.com/optifat/aave-portfolio-manage";
+        match cmd {
+            TelegramBotExternalCommand::Help => format!(
+                "Current implementation of this bot is for personal usage only.\n {}",
+                more_info
+            ),
+            _ => format!("You have no access!\n {}", more_info),
+        }
     }
 }
