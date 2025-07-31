@@ -35,10 +35,10 @@ async fn main() -> anyhow::Result<()> {
     let user_id: i64 = env::var("TG_USER_ID")?.parse()?;
 
     let telegram_bot = Arc::new(TelegramBot::new(&bot_token, user_id, bot_tx, bot_rx).await);
-    let clone = telegram_bot.clone();
+    let telegram_bot_clone = telegram_bot.clone();
     tokio::spawn(async move {
         TelegramBotExternalCommand::repl(Bot::new(bot_token), move |msg, cmd| {
-            let clone = clone.clone();
+            let clone = telegram_bot_clone.clone();
             async move { TelegramBot::answer(&clone, msg, cmd).await }
         })
         .await;
@@ -50,9 +50,14 @@ async fn main() -> anyhow::Result<()> {
         tracker_rx,
     )?);
 
-    let clone = telegram_bot.clone();
+    let telegram_bot_clone = telegram_bot.clone();
     tokio::spawn(async move {
-        clone.start().await;
+        telegram_bot_clone.start().await;
+    });
+
+    let aave_portfolio_tracker_clone = aave_portfolio_tracker.clone();
+    tokio::spawn(async move {
+        aave_portfolio_tracker_clone.start().await;
     });
 
     let scheduler = JobScheduler::new().await?;

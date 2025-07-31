@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use teloxide::{prelude::*, utils::command::BotCommands};
+use teloxide::{prelude::*, utils::command::BotCommands, ApiError};
 use tokio::sync::{mpsc, Mutex};
 
 use crate::{
@@ -66,8 +66,11 @@ impl TelegramBot {
         let bot = &self.bot;
 
         if msg.chat.id == self.chat_id {
-            bot.send_message(msg.chat.id, Self::access_answer(cmd).await)
-                .await?;
+            if let Err(_) = self.access_answer(cmd).await {
+                let error = "Failed to process incoming command";
+                log::error!("{}: cmd {:?}", error, cmd);
+                return ResponseResult::Err(teloxide::RequestError::Api(ApiError::Unknown(error.into())));
+            }
         } else {
             bot.send_message(msg.chat.id, Self::no_access_answer(cmd).await)
                 .await?;
@@ -76,12 +79,14 @@ impl TelegramBot {
         Ok(())
     }
 
-    async fn access_answer(cmd: TelegramBotExternalCommand) -> String {
+    async fn access_answer(&self, cmd: TelegramBotExternalCommand) -> anyhow::Result<()> {
         match cmd {
             TelegramBotExternalCommand::Help => {
-                TelegramBotExternalCommand::descriptions().to_string()
+                self.send_message(TelegramBotExternalCommand::descriptions().to_string()).await
             },
-            _ => "In development".into(),
+            TelegramBotExternalCommand::Portfolio => {
+                Ok(self.to_tracker_sender.send(TrackerCommand::GetPortfolio).await?)
+            }
         }
     }
 

@@ -45,6 +45,23 @@ impl AavePortfolioTracker {
         })
     }
 
+    pub async fn start(&self) {
+        while let Some(message) = self.from_bot_receiver.lock().await.recv().await {
+            if let Err(e) = match message {
+                TrackerCommand::GetPortfolio => {
+                    let portfolio = self.aave_portfolio_fetcher.fetch_portfolio().await.unwrap();
+                    self
+                        .to_bot_sender
+                        .send(BotCommand::NotifyHealthDrop {
+                            portfolio: portfolio,
+                        }).await
+                }
+            } {
+                log::error!("Failed to send telegram notification: {}", e)
+            }
+        }
+    }
+
     pub async fn run(&self) {
         log::info!("Fetching the AAVE v3 portfolio");
 
