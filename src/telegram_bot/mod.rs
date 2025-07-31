@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use teloxide::{prelude::*, utils::command::BotCommands};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::{
     commands::{BotCommand, TrackerCommand},
@@ -15,7 +15,7 @@ pub struct TelegramBot {
     bot: Arc<Bot>,
     chat_id: ChatId,
     to_tracker_sender: mpsc::Sender<TrackerCommand>,
-    from_tracker_receiver: mpsc::Receiver<BotCommand>,
+    from_tracker_receiver: Mutex<mpsc::Receiver<BotCommand>>,
 }
 
 impl TelegramBot {
@@ -31,7 +31,17 @@ impl TelegramBot {
             bot: Arc::new(Bot::new(bot_token)),
             chat_id: ChatId(user_id),
             to_tracker_sender,
-            from_tracker_receiver,
+            from_tracker_receiver: Mutex::new(from_tracker_receiver),
+        }
+    }
+
+    pub async fn start(&self) {
+        while let Some(message) = self.from_tracker_receiver.lock().await.recv().await {
+            if let Err(e) = match message {
+                BotCommand::NotifyHealthDrop { portfolio } => self.send_portfolio_notification(&portfolio).await
+            } {
+                log::error!("Failed to send telegram notification: {}", e)
+            }
         }
     }
 

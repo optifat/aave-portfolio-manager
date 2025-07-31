@@ -1,7 +1,7 @@
 use std::env;
 
 use ethers::types::Address;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::commands::{BotCommand, TrackerCommand};
 use crate::data_fetchers::AavePortfolioFetcher;
@@ -14,7 +14,7 @@ pub mod config;
 pub struct AavePortfolioTracker {
     aave_portfolio_fetcher: AavePortfolioFetcher,
     to_bot_sender: mpsc::Sender<BotCommand>,
-    from_bot_receiver: mpsc::Receiver<TrackerCommand>,
+    from_bot_receiver: Mutex<mpsc::Receiver<TrackerCommand>>,
     pub config: AavePortfolioTrackerConfig,
 }
 
@@ -41,7 +41,7 @@ impl AavePortfolioTracker {
             aave_portfolio_fetcher,
             config,
             to_bot_sender,
-            from_bot_receiver,
+            from_bot_receiver: Mutex::new(from_bot_receiver),
         })
     }
 

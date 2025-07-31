@@ -1,7 +1,6 @@
 use std::{env, sync::Arc};
 
 use dotenvy::dotenv;
-use ethers::types::Address;
 use teloxide::{repls::CommandReplExt, Bot};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -36,9 +35,10 @@ async fn main() -> anyhow::Result<()> {
     let user_id: i64 = env::var("TG_USER_ID")?.parse()?;
 
     let telegram_bot = Arc::new(TelegramBot::new(&bot_token, user_id, bot_tx, bot_rx).await);
+    let clone = telegram_bot.clone();
     tokio::spawn(async move {
         TelegramBotExternalCommand::repl(Bot::new(bot_token), move |msg, cmd| {
-            let clone = telegram_bot.clone();
+            let clone = clone.clone();
             async move { TelegramBot::answer(&clone, msg, cmd).await }
         })
         .await;
@@ -49,6 +49,11 @@ async fn main() -> anyhow::Result<()> {
         tracker_tx,
         tracker_rx,
     )?);
+
+    let clone = telegram_bot.clone();
+    tokio::spawn(async move {
+        clone.start().await;
+    });
 
     let scheduler = JobScheduler::new().await?;
     let job = Job::new_async(config.cron_schedule, move |_, _| {
