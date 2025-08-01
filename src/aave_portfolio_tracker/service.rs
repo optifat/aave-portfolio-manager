@@ -1,26 +1,24 @@
 use std::env;
 
 use ethers::types::Address;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::mpsc;
 
 use super::config::AavePortfolioTrackerConfig;
-use crate::commands::{BotCommand, TrackerCommand};
+use crate::commands::BotCommand;
 use crate::data_fetchers::AavePortfolioFetcher;
 use crate::data_fetchers::defi_llama_data_fetcher::DefiLlamaDataFetcher;
 use crate::data_fetchers::eth_chain_data_fetcher::EthChainDataFetcher;
 
 pub(super) struct AavePortfolioTracker {
-    aave_portfolio_fetcher: AavePortfolioFetcher,
+    pub(super) aave_portfolio_fetcher: AavePortfolioFetcher,
+    config: AavePortfolioTrackerConfig,
     to_bot_sender: mpsc::Sender<BotCommand>,
-    from_bot_receiver: Mutex<mpsc::Receiver<TrackerCommand>>,
-    pub config: AavePortfolioTrackerConfig,
 }
 
 impl AavePortfolioTracker {
     pub(super) fn new(
         config: AavePortfolioTrackerConfig,
         to_bot_sender: mpsc::Sender<BotCommand>,
-        from_bot_receiver: mpsc::Receiver<TrackerCommand>,
     ) -> anyhow::Result<Self> {
         let wallet_address: Address = env::var("ETH_ADDRESS")?.parse()?;
         let node_uri: String = env::var("NODE_URI")?;
@@ -39,28 +37,10 @@ impl AavePortfolioTracker {
             aave_portfolio_fetcher,
             config,
             to_bot_sender,
-            from_bot_receiver: Mutex::new(from_bot_receiver),
         })
     }
 
-    pub(super) async fn start(&self) {
-        while let Some(message) = self.from_bot_receiver.lock().await.recv().await {
-            if let Err(e) = match message {
-                TrackerCommand::GetPortfolio => {
-                    let portfolio = self.aave_portfolio_fetcher.fetch_portfolio().await.unwrap();
-                    self.to_bot_sender
-                        .send(BotCommand::NotifyHealthDrop {
-                            portfolio: portfolio,
-                        })
-                        .await
-                }
-            } {
-                log::error!("Failed to send telegram notification: {}", e)
-            }
-        }
-    }
-
-    pub(super) async fn run(&self) {
+    pub(super) async fn run_scheduled_job(&self) {
         log::info!("Fetching the AAVE v3 portfolio");
 
         let portfolio = match self.aave_portfolio_fetcher.fetch_portfolio().await {
@@ -75,13 +55,20 @@ impl AavePortfolioTracker {
         }
 
         if let Err(e) = self
-            .to_bot_sender
-            .send(BotCommand::NotifyHealthDrop {
+            .send_telegram_notification(BotCommand::NotifyHealthDrop {
                 portfolio: portfolio,
             })
             .await
         {
             return log::info!("Tracker service failed to communicate with bot: {}", e);
         };
+    }
+
+    pub(super) async fn send_telegram_notification(
+        &self,
+        command: BotCommand,
+    ) -> anyhow::Result<()> {
+        self.to_bot_sender.send(command).await?;
+        Ok(())
     }
 }

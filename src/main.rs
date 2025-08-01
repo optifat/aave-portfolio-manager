@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let (bot_tx, tracker_rx) = tokio::sync::mpsc::channel::<TrackerCommand>(8);
     let (tracker_tx, bot_rx) = tokio::sync::mpsc::channel::<BotCommand>(8);
 
-    start_telegram_service(bot_tx, bot_rx).await?;
+    start_telegram_service(bot_tx, bot_rx)?;
     start_aave_portfolio_tracker(config.aave_portfolio_tracker, tracker_tx, tracker_rx).await?;
 
     tokio::signal::ctrl_c().await?;

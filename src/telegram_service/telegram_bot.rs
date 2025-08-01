@@ -1,27 +1,22 @@
 use std::sync::Arc;
 
 use teloxide::{ApiError, prelude::*, utils::command::BotCommands};
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::mpsc;
 
 use super::command::TelegramBotExternalCommand;
-use crate::{
-    commands::{BotCommand, TrackerCommand},
-    portfolio::AavePortfolio,
-};
+use crate::{commands::TrackerCommand, portfolio::AavePortfolio};
 
 pub(super) struct TelegramBot {
-    bot: Arc<Bot>,
+    pub(super) bot: Arc<Bot>,
     chat_id: ChatId,
     to_tracker_sender: mpsc::Sender<TrackerCommand>,
-    from_tracker_receiver: Mutex<mpsc::Receiver<BotCommand>>,
 }
 
 impl TelegramBot {
-    pub(super) async fn new(
+    pub(super) fn new(
         bot_token: &str,
         user_id: i64,
         to_tracker_sender: mpsc::Sender<TrackerCommand>,
-        from_tracker_receiver: mpsc::Receiver<BotCommand>,
     ) -> Self {
         log::info!("Starting TelegramBot");
 
@@ -29,19 +24,6 @@ impl TelegramBot {
             bot: Arc::new(Bot::new(bot_token)),
             chat_id: ChatId(user_id),
             to_tracker_sender,
-            from_tracker_receiver: Mutex::new(from_tracker_receiver),
-        }
-    }
-
-    pub(super) async fn start(&self) {
-        while let Some(message) = self.from_tracker_receiver.lock().await.recv().await {
-            if let Err(e) = match message {
-                BotCommand::NotifyHealthDrop { portfolio } => {
-                    self.send_portfolio_notification(&portfolio).await
-                }
-            } {
-                log::error!("Failed to send telegram notification: {}", e)
-            }
         }
     }
 
