@@ -1,17 +1,15 @@
 use std::sync::Arc;
 
-use teloxide::{prelude::*, utils::command::BotCommands, ApiError};
-use tokio::sync::{mpsc, Mutex};
+use teloxide::{ApiError, prelude::*, utils::command::BotCommands};
+use tokio::sync::{Mutex, mpsc};
 
+use super::command::TelegramBotExternalCommand;
 use crate::{
     commands::{BotCommand, TrackerCommand},
     portfolio::AavePortfolio,
 };
-use command::TelegramBotExternalCommand;
 
-pub mod command;
-
-pub struct TelegramBot {
+pub(super) struct TelegramBot {
     bot: Arc<Bot>,
     chat_id: ChatId,
     to_tracker_sender: mpsc::Sender<TrackerCommand>,
@@ -19,7 +17,7 @@ pub struct TelegramBot {
 }
 
 impl TelegramBot {
-    pub async fn new(
+    pub(super) async fn new(
         bot_token: &str,
         user_id: i64,
         to_tracker_sender: mpsc::Sender<TrackerCommand>,
@@ -35,17 +33,19 @@ impl TelegramBot {
         }
     }
 
-    pub async fn start(&self) {
+    pub(super) async fn start(&self) {
         while let Some(message) = self.from_tracker_receiver.lock().await.recv().await {
             if let Err(e) = match message {
-                BotCommand::NotifyHealthDrop { portfolio } => self.send_portfolio_notification(&portfolio).await
+                BotCommand::NotifyHealthDrop { portfolio } => {
+                    self.send_portfolio_notification(&portfolio).await
+                }
             } {
                 log::error!("Failed to send telegram notification: {}", e)
             }
         }
     }
 
-    pub async fn send_portfolio_notification(
+    pub(super) async fn send_portfolio_notification(
         &self,
         portfolio: &AavePortfolio,
     ) -> anyhow::Result<()> {
@@ -58,7 +58,7 @@ impl TelegramBot {
         Ok(())
     }
 
-    pub async fn answer(
+    pub(super) async fn answer(
         &self,
         msg: Message,
         cmd: TelegramBotExternalCommand,
@@ -69,7 +69,9 @@ impl TelegramBot {
             if let Err(_) = self.access_answer(cmd).await {
                 let error = "Failed to process incoming command";
                 log::error!("{}: cmd {:?}", error, cmd);
-                return ResponseResult::Err(teloxide::RequestError::Api(ApiError::Unknown(error.into())));
+                return ResponseResult::Err(teloxide::RequestError::Api(ApiError::Unknown(
+                    error.into(),
+                )));
             }
         } else {
             bot.send_message(msg.chat.id, Self::no_access_answer(cmd).await)
@@ -82,11 +84,13 @@ impl TelegramBot {
     async fn access_answer(&self, cmd: TelegramBotExternalCommand) -> anyhow::Result<()> {
         match cmd {
             TelegramBotExternalCommand::Help => {
-                self.send_message(TelegramBotExternalCommand::descriptions().to_string()).await
-            },
-            TelegramBotExternalCommand::Portfolio => {
-                Ok(self.to_tracker_sender.send(TrackerCommand::GetPortfolio).await?)
+                self.send_message(TelegramBotExternalCommand::descriptions().to_string())
+                    .await
             }
+            TelegramBotExternalCommand::Portfolio => Ok(self
+                .to_tracker_sender
+                .send(TrackerCommand::GetPortfolio)
+                .await?),
         }
     }
 
