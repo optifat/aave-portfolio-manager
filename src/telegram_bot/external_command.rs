@@ -5,7 +5,7 @@ use teloxide::utils::command::BotCommands;
     rename_rule = "lowercase",
     description = "These commands are supported:"
 )]
-pub(super) enum TelegramBotExternalCommand {
+pub(super) enum ExternalCommand {
     #[command(description = "Display this text.")]
     Help,
     #[command(description = "Get current portfolio.")]

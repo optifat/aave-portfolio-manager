@@ -3,22 +3,22 @@ use std::sync::Arc;
 use teloxide::{ApiError, prelude::*, utils::command::BotCommands};
 use tokio::sync::mpsc;
 
-use super::command::TelegramBotExternalCommand;
-use crate::{commands::TrackerCommand, portfolio::AavePortfolio};
+use super::external_command::ExternalCommand;
+use crate::{cross_service_commands::BotToTrackerCommand, portfolio::AavePortfolio};
 
-pub(super) struct TelegramBot {
+pub(super) struct TelegramClient {
     pub(super) bot: Arc<Bot>,
     chat_id: ChatId,
-    to_tracker_sender: mpsc::Sender<TrackerCommand>,
+    to_tracker_sender: mpsc::Sender<BotToTrackerCommand>,
 }
 
-impl TelegramBot {
+impl TelegramClient {
     pub(super) fn new(
         bot_token: &str,
         user_id: i64,
-        to_tracker_sender: mpsc::Sender<TrackerCommand>,
+        to_tracker_sender: mpsc::Sender<BotToTrackerCommand>,
     ) -> Self {
-        log::info!("Starting TelegramBot");
+        log::info!("Starting TelegramClient");
 
         Self {
             bot: Arc::new(Bot::new(bot_token)),
@@ -40,16 +40,12 @@ impl TelegramBot {
         Ok(())
     }
 
-    pub(super) async fn answer(
-        &self,
-        msg: Message,
-        cmd: TelegramBotExternalCommand,
-    ) -> ResponseResult<()> {
+    pub(super) async fn answer(&self, msg: Message, cmd: ExternalCommand) -> ResponseResult<()> {
         let bot = &self.bot;
 
         if msg.chat.id == self.chat_id {
             if let Err(_) = self.access_answer(cmd).await {
-                let error = "Failed to process incoming command";
+                let error = "Failed to process incoming external command";
                 log::error!("{}: cmd {:?}", error, cmd);
                 return ResponseResult::Err(teloxide::RequestError::Api(ApiError::Unknown(
                     error.into(),
@@ -63,23 +59,23 @@ impl TelegramBot {
         Ok(())
     }
 
-    async fn access_answer(&self, cmd: TelegramBotExternalCommand) -> anyhow::Result<()> {
+    async fn access_answer(&self, cmd: ExternalCommand) -> anyhow::Result<()> {
         match cmd {
-            TelegramBotExternalCommand::Help => {
-                self.send_message(TelegramBotExternalCommand::descriptions().to_string())
+            ExternalCommand::Help => {
+                self.send_message(ExternalCommand::descriptions().to_string())
                     .await
             }
-            TelegramBotExternalCommand::Portfolio => Ok(self
+            ExternalCommand::Portfolio => Ok(self
                 .to_tracker_sender
-                .send(TrackerCommand::GetPortfolio)
+                .send(BotToTrackerCommand::GetPortfolio)
                 .await?),
         }
     }
 
-    async fn no_access_answer(cmd: TelegramBotExternalCommand) -> String {
-        let more_info = " More info: https://github.com/optifat/aave-portfolio-manage";
+    async fn no_access_answer(cmd: ExternalCommand) -> String {
+        let more_info = "More info: https://github.com/optifat/aave-portfolio-manage";
         match cmd {
-            TelegramBotExternalCommand::Help => format!(
+            ExternalCommand::Help => format!(
                 "Current implementation of this bot is for personal usage only.\n {}",
                 more_info
             ),

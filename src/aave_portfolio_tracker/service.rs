@@ -4,7 +4,7 @@ use ethers::types::Address;
 use tokio::sync::mpsc;
 
 use super::config::AavePortfolioTrackerConfig;
-use crate::commands::BotCommand;
+use crate::cross_service_commands::TrackerToBotCommand;
 use crate::data_fetchers::AavePortfolioFetcher;
 use crate::data_fetchers::defi_llama_data_fetcher::DefiLlamaDataFetcher;
 use crate::data_fetchers::eth_chain_data_fetcher::EthChainDataFetcher;
@@ -12,13 +12,13 @@ use crate::data_fetchers::eth_chain_data_fetcher::EthChainDataFetcher;
 pub(super) struct AavePortfolioTracker {
     pub(super) aave_portfolio_fetcher: AavePortfolioFetcher,
     config: AavePortfolioTrackerConfig,
-    to_bot_sender: mpsc::Sender<BotCommand>,
+    to_bot_sender: mpsc::Sender<TrackerToBotCommand>,
 }
 
 impl AavePortfolioTracker {
     pub(super) fn new(
         config: AavePortfolioTrackerConfig,
-        to_bot_sender: mpsc::Sender<BotCommand>,
+        to_bot_sender: mpsc::Sender<TrackerToBotCommand>,
     ) -> anyhow::Result<Self> {
         let wallet_address: Address = env::var("ETH_ADDRESS")?.parse()?;
         let node_uri: String = env::var("NODE_URI")?;
@@ -55,7 +55,7 @@ impl AavePortfolioTracker {
         }
 
         if let Err(e) = self
-            .send_telegram_notification(BotCommand::NotifyHealthDrop {
+            .send_telegram_notification(TrackerToBotCommand::NotifyHealthDrop {
                 portfolio: portfolio,
             })
             .await
@@ -66,7 +66,7 @@ impl AavePortfolioTracker {
 
     pub(super) async fn send_telegram_notification(
         &self,
-        command: BotCommand,
+        command: TrackerToBotCommand,
     ) -> anyhow::Result<()> {
         self.to_bot_sender.send(command).await?;
         Ok(())

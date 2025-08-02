@@ -1,9 +1,9 @@
 use crate::portfolio::AavePortfolio;
 
-pub enum BotCommand {
+pub enum TrackerToBotCommand {
     NotifyHealthDrop { portfolio: AavePortfolio },
 }
 
-pub enum TrackerCommand {
+pub enum BotToTrackerCommand {
     GetPortfolio,
 }
