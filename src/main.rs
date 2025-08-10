@@ -7,6 +7,7 @@ use telegram_bot::start_telegram_bot;
 
 mod aave_portfolio_tracker;
 mod app_config;
+mod args;
 mod common_data;
 mod cross_service_commands;
 mod data_fetchers;
@@ -19,7 +20,9 @@ async fn main() -> anyhow::Result<()> {
     log::info!("Starting the service");
 
     dotenv().ok();
-    let config = app_config::load_config()?;
+
+    let args = <args::Args as clap::Parser>::parse();
+    let config = app_config::load_config(args.config)?;
 
     init_logger(config.logging);
 
