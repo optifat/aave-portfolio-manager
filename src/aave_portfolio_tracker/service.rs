@@ -48,7 +48,9 @@ impl AavePortfolioTracker {
             Err(err) => return log::error!("Failed to fetch portfolio: {}", err),
         };
 
-        if portfolio.health_factor >= self.config.health_factor_notification_limit {
+        if portfolio.health_factor > self.config.health_factor_notification_lower_limit
+            && portfolio.health_factor < self.config.health_factor_notification_upper_limit
+        {
             return log::info!(
                 "Health factor is within an acceptable range, skipping notification"
             );

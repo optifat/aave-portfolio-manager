@@ -1,6 +1,7 @@
 use dotenvy::dotenv;
 
 use aave_portfolio_tracker::start_aave_portfolio_tracker;
+use app_config::AppConfig;
 use cross_service_commands::{BotToTrackerCommand, TrackerToBotCommand};
 use logger::init_logger;
 use telegram_bot::start_telegram_bot;
@@ -22,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     let args = <args::Args as clap::Parser>::parse();
-    let config = app_config::load_config(args.config)?;
+    let config = AppConfig::load(args.config)?;
 
     init_logger(config.logging);
 
