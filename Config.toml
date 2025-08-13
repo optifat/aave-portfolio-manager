@@ -2,5 +2,6 @@
 level = "info"
 
 [aave_portfolio_tracker]
-health_factor_notification_limit = 1.1
+health_factor_notification_lower_limit = 1.1
+health_factor_notification_upper_limit = 1.5
 cron_schedule = "0 */5 * * * *"
