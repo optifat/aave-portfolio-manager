@@ -51,16 +51,32 @@ pub async fn get_user_aave_data(
 
 pub async fn get_aave_reserve_data(
     provider: Arc<Provider<Http>>,
-    asset: Address,
-) -> anyhow::Result<AaveReserveData> {
+    tokens: &Vec<Address>,
+    multicall_address: Option<Address>,
+) -> anyhow::Result<Vec<AaveReserveData>> {
     let aave_pool_address = get_aave_pool(provider.clone()).await?;
-    let aave_pool = IAavePool::new(aave_pool_address, provider);
+    let aave_pool = IAavePool::new(aave_pool_address, provider.clone());
 
-    let reserve_data: ReserveData = aave_pool.get_reserve_data(asset).await?.into();
-    Ok(AaveReserveData {
-        a_token: reserve_data.a_token_address,
-        variable_debt_token: reserve_data.variable_debt_token_address,
-    })
+    let reserve_data: Vec<AaveReserveData> =
+        Multicall::<Provider<Http>>::new(provider.clone(), multicall_address)
+            .await?
+            .version(MulticallVersion::Multicall3)
+            .add_calls(
+                false,
+                tokens
+                    .iter()
+                    .map(|token| aave_pool.get_reserve_data(token.clone())),
+            )
+            .call::<Vec<ReserveData>>()
+            .await?
+            .iter()
+            .map(|reserve_data| AaveReserveData {
+                a_token: reserve_data.a_token_address,
+                variable_debt_token: reserve_data.variable_debt_token_address,
+            })
+            .collect();
+
+    Ok(reserve_data)
 }
 
 impl From<ReservesCallOutput> for ReserveData {
