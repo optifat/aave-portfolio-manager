@@ -12,7 +12,7 @@ abigen!(
     ]"#,
 );
 
-pub(super) async fn get_erc20_user_data(
+pub(super) async fn get_erc20_user_balances(
     provider: Arc<Provider<Http>>,
     user: Address,
     token_addresses: &Vec<Address>,
@@ -28,7 +28,7 @@ pub(super) async fn get_erc20_user_data(
             .await?
             .version(MulticallVersion::Multicall3)
             .add_calls(false, tokens.iter().map(|token| token.balance_of(user)))
-            .call::<Vec<U256>>()
+            .call_array::<U256>()
             .await?
             .iter()
             .map(|balance| {
@@ -44,7 +44,7 @@ pub(super) async fn get_erc20_user_data(
             .await?
             .version(MulticallVersion::Multicall3)
             .add_calls(false, tokens.iter().map(|token| token.decimals()))
-            .call()
+            .call_array()
             .await?;
 
     let token_symbols: Vec<String> =
@@ -52,7 +52,7 @@ pub(super) async fn get_erc20_user_data(
             .await?
             .version(MulticallVersion::Multicall3)
             .add_calls(false, tokens.iter().map(|token| token.symbol()))
-            .call()
+            .call_array()
             .await?;
 
     let erc20_data = user_balances

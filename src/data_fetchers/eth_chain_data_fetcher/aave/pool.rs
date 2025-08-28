@@ -67,7 +67,7 @@ pub async fn get_aave_reserve_data(
                     .iter()
                     .map(|token| aave_pool.get_reserve_data(token.clone())),
             )
-            .call::<Vec<ReserveData>>()
+            .call_array::<ReserveData>()
             .await?
             .iter()
             .map(|reserve_data| AaveReserveData {

@@ -47,7 +47,7 @@ impl AavePortfolioFetcher {
 
         let supply = self
             .eth_chain_data_fetcher
-            .fetch_tokens_data(&user_a_tokens)
+            .fetch_tokens_balances(&user_a_tokens)
             .await?;
 
         log::info!("Fetching debt balances");
@@ -64,7 +64,7 @@ impl AavePortfolioFetcher {
 
         let debt = self
             .eth_chain_data_fetcher
-            .fetch_tokens_data(&user_debt_tokens)
+            .fetch_tokens_balances(&user_debt_tokens)
             .await?;
 
         log::info!("Fetching combined data");
