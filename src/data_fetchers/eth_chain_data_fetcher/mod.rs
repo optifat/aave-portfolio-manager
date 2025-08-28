@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use ethers::{
@@ -6,7 +7,9 @@ use ethers::{
     providers::{Http, Provider},
 };
 
-use crate::data_fetchers::eth_chain_data_fetcher::aave::{AaveReserveData, AaveUserData};
+use aave::{AaveReserveData, AaveUserData};
+
+use crate::portfolio::ERC20Balance;
 
 mod aave;
 mod erc20;
@@ -24,16 +27,11 @@ impl EthChainDataFetcher {
         })
     }
 
-    pub async fn fetch_balance(&self, token: Address) -> anyhow::Result<u128> {
-        erc20::get_token_balance(self.provider.clone(), token, self.wallet).await
-    }
-
-    pub async fn fetch_token_decimals(&self, token: Address) -> anyhow::Result<u8> {
-        erc20::get_token_decimals(self.provider.clone(), token).await
-    }
-
-    pub async fn fetch_token_symbol(&self, token: Address) -> anyhow::Result<String> {
-        erc20::get_token_symbol(self.provider.clone(), token).await
+    pub async fn fetch_tokens_balances(
+        &self,
+        tokens: &Vec<Address>,
+    ) -> anyhow::Result<HashMap<String, ERC20Balance>> {
+        erc20::get_erc20_user_balances(self.provider.clone(), self.wallet, tokens, None).await
     }
 
     pub async fn fetch_user_aave_data(&self) -> anyhow::Result<AaveUserData> {
@@ -44,7 +42,10 @@ impl EthChainDataFetcher {
         aave::get_user_reserves(self.provider.clone(), self.wallet).await
     }
 
-    pub async fn fetch_aave_reserve_data(&self, token: Address) -> anyhow::Result<AaveReserveData> {
-        aave::get_aave_reserve_data(self.provider.clone(), token).await
+    pub async fn fetch_aave_reserves_data(
+        &self,
+        tokens: &Vec<Address>,
+    ) -> anyhow::Result<Vec<AaveReserveData>> {
+        aave::get_aave_reserve_data(self.provider.clone(), tokens, None).await
     }
 }
